@@ -45,11 +45,38 @@ function DataBackup({
       try {
         const backup = JSON.parse(reader.result);
 
-        if (!backup.data || backup.app !== "rota-canada") {
+        const isValidData =
+          backup.data &&
+          typeof backup.data === "object" &&
+          !Array.isArray(backup.data) &&
+          (backup.data.language === "pt" ||
+            backup.data.language === "en") &&
+          (backup.data.theme === "dark" ||
+            backup.data.theme === "light") &&
+          Array.isArray(backup.data.tracks) &&
+          Array.isArray(backup.data.completedMissions) &&
+          backup.data.missionStatuses &&
+          typeof backup.data.missionStatuses === "object" &&
+          backup.data.evidences &&
+          typeof backup.data.evidences === "object";
+
+        if (
+          backup.app !== "rota-canada" ||
+          backup.version !== 1 ||
+          !isValidData
+        ) {
           throw new Error("invalid-backup");
         }
 
-        onImport(backup.data);
+        const confirmed = window.confirm(
+          data.language === "pt"
+            ? "Importar este backup substituirá o planejamento atual. Deseja continuar?"
+            : "Importing this backup will replace your current plan. Do you want to continue?"
+        );
+
+        if (confirmed) {
+          onImport(backup.data);
+  }
       } catch {
         window.alert(
           data.language === "pt"
@@ -61,6 +88,38 @@ function DataBackup({
 
     reader.readAsText(file);
     event.target.value = "";
+  }
+
+  function getLastBackupLabel() {
+    const backupDate = localStorage.getItem(
+      "rota-canada-app-v3-backup-date"
+    );
+
+    if (!backupDate) {
+      return data.language === "pt"
+        ? "Nenhum backup automático registrado ainda."
+        : "No automatic backup recorded yet.";
+    }
+
+    const date = new Date(backupDate);
+
+    if (Number.isNaN(date.getTime())) {
+      return data.language === "pt"
+        ? "Data do backup indisponível."
+        : "Backup date unavailable.";
+    }
+
+    const formattedDate = new Intl.DateTimeFormat(
+      data.language === "pt" ? "pt-BR" : "en-US",
+      {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }
+    ).format(date);
+
+    return data.language === "pt"
+      ? `Último backup automático: ${formattedDate}`
+      : `Last automatic backup: ${formattedDate}`;
   }
 
   return (
@@ -97,6 +156,20 @@ function DataBackup({
             ? "Exporte seus dados para guardar uma cópia ou restaurá-los em outro navegador."
             : "Export your data to keep a copy or restore it in another browser."}
         </p>
+
+        <div
+          className="automatic-backup-status"
+          role="status"
+          aria-live="polite"
+        >
+          <strong>
+            {data.language === "pt"
+              ? "Backup automático"
+              : "Automatic backup"}
+          </strong>
+
+          <span>{getLastBackupLabel()}</span>
+        </div>
 
         <div className="backup-actions">
           <button

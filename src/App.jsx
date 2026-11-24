@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
-import Campaign from "./components/Campaign";
+import { useEffect, useMemo, useState } from "react";
+import Campaign, {
+  campaignPhases
+} from "./components/Campaign";
 import DashboardContent from "./components/DashboardContent";
 import PlanningSettings from "./components/PlanningSettings";
 import EvidenceModal from "./components/EvidenceModal";
 import DataBackup from "./components/DataBackup";
+import LibraryProjects from "./components/LibraryProjects";
 
 const STORAGE_KEY = "rota-canada-app-v3";
 
@@ -17,7 +20,11 @@ const translations = {
     projects: "Projetos",
     library: "Biblioteca",
     review: "Revisão",
+    backup: "Backup dos dados",
+    settings: "Configurações",
     logout: "Sair",
+    logoutConfirm:
+      "Deseja sair do planejamento? Seus dados continuarão salvos neste navegador.",
     light: "Modo claro",
     dark: "Modo escuro",
     currentMission: "Missão atual",
@@ -58,7 +65,7 @@ const translations = {
     close: "Fechar",
     save: "Salvar",
     cancel: "Cancelar",
-    firstReview: "Primeira revisão",
+    firstReview: "Revisão da rota",
     reviewQuestion: "Como está sua rota neste momento?",
     reviewDescription:
       "Registre uma observação curta. Você poderá complementar depois.",
@@ -70,6 +77,8 @@ const translations = {
     email: "Seu e-mail",
     enter: "Entrar no planejamento",
     privateData: "Dados privados e editáveis",
+    localStorageNotice:
+      "Seus dados ficam salvos neste navegador. Este protótipo não possui autenticação em servidor.",
     registerEvidence: "Registrar evidência",
     aspirationText:
       "Avaliar a possibilidade de residir no Canadá até 2033, conforme formação, experiência, idioma, recursos, oportunidades e regras vigentes.",
@@ -86,7 +95,11 @@ const translations = {
     projects: "Projects",
     library: "Library",
     review: "Review",
+    backup: "Data backup",
+    settings: "Settings",
     logout: "Log out",
+    logoutConfirm:
+      "Do you want to leave the planning space? Your data will remain saved in this browser.",
     light: "Light mode",
     dark: "Dark mode",
     currentMission: "Current mission",
@@ -127,7 +140,7 @@ const translations = {
     close: "Close",
     save: "Save",
     cancel: "Cancel",
-    firstReview: "First review",
+    firstReview: "Route review",
     reviewQuestion: "How is your route right now?",
     reviewDescription:
       "Write a short note. You can add more details later.",
@@ -139,6 +152,8 @@ const translations = {
     email: "Your email",
     enter: "Enter planning space",
     privateData: "Private and editable data",
+    localStorageNotice:
+      "Your data is saved in this browser. This prototype does not use server authentication.",
     registerEvidence: "Record evidence",
     aspirationText:
       "Assess the possibility of living in Canada by 2033 according to education, experience, language, resources, opportunities and current rules.",
@@ -164,11 +179,147 @@ const initialTracks = [
   progress: 0
 }));
 
+const initialProjects = [
+  {
+    id: "web-application",
+    title: {
+      pt: "Aplicação web pequena",
+      en: "Small web application"
+    },
+    description: {
+      pt: "Interface, API, banco de dados, testes e README.",
+      en: "Interface, API, database, tests and README."
+    },
+    stages: [
+      {
+        id: "planning",
+        pt: "Definir problema e escopo",
+        en: "Define problem and scope"
+      },
+      {
+        id: "interface",
+        pt: "Criar a interface",
+        en: "Build the interface"
+      },
+      {
+        id: "api",
+        pt: "Criar a API",
+        en: "Build the API"
+      },
+      {
+        id: "database",
+        pt: "Conectar o banco de dados",
+        en: "Connect the database"
+      },
+      {
+        id: "tests",
+        pt: "Adicionar testes",
+        en: "Add tests"
+      },
+      {
+        id: "documentation",
+        pt: "Documentar no README",
+        en: "Document in the README"
+      }
+    ],
+    completedStages: []
+  },
+  {
+    id: "service-integration",
+    title: {
+      pt: "Integração entre serviços",
+      en: "Service integration"
+    },
+    description: {
+      pt: "API, webhook, autenticação, logs e tratamento de falhas.",
+      en: "API, webhook, authentication, logs and failure handling."
+    },
+    stages: [
+      {
+        id: "integration-scope",
+        pt: "Definir os serviços envolvidos",
+        en: "Define the services involved"
+      },
+      {
+        id: "api-connection",
+        pt: "Criar a conexão entre APIs",
+        en: "Create the API connection"
+      },
+      {
+        id: "webhook",
+        pt: "Implementar webhook",
+        en: "Implement the webhook"
+      },
+      {
+        id: "authentication",
+        pt: "Adicionar autenticação",
+        en: "Add authentication"
+      },
+      {
+        id: "logs",
+        pt: "Registrar logs e erros",
+        en: "Record logs and errors"
+      },
+      {
+        id: "failure-handling",
+        pt: "Tratar falhas e indisponibilidade",
+        en: "Handle failures and downtime"
+      }
+    ],
+    completedStages: []
+  },
+  {
+    id: "cloud-deployment",
+    title: {
+      pt: "Deploy em cloud",
+      en: "Cloud deployment"
+    },
+    description: {
+      pt: "Diagrama, IAM, monitoramento, custos e desligamento.",
+      en: "Diagram, IAM, monitoring, costs and shutdown checklist."
+    },
+    stages: [
+      {
+        id: "architecture",
+        pt: "Desenhar a arquitetura",
+        en: "Design the architecture"
+      },
+      {
+        id: "aws-service",
+        pt: "Escolher os serviços AWS",
+        en: "Choose AWS services"
+      },
+      {
+        id: "iam",
+        pt: "Configurar permissões IAM",
+        en: "Configure IAM permissions"
+      },
+      {
+        id: "deployment",
+        pt: "Realizar o deploy",
+        en: "Perform the deployment"
+      },
+      {
+        id: "monitoring",
+        pt: "Configurar monitoramento",
+        en: "Configure monitoring"
+      },
+      {
+        id: "costs",
+        pt: "Registrar custos e checklist de desligamento",
+        en: "Record costs and shutdown checklist"
+      }
+    ],
+    completedStages: []
+  }
+];
+
 const initialData = {
   user: null,
   language: "pt",
   theme: "dark",
   page: "dashboard",
+  library: [],
   mode: "normal",
   weeklyHours: 15,
   difficultWeekHours: 7,
@@ -176,118 +327,37 @@ const initialData = {
   lastReview: null,
   reviewNote: "",
   evidences: {},
+  projects: initialProjects,
   completedMissions: [],
   missionStatuses: {},
   tracks: initialTracks
 };
 
-const mainMission = {
-  id: "english-baseline-2027-01",
-  trackId: "english",
+function normalizeData(parsed = {}) {
+  const savedTracks = Array.isArray(parsed.tracks)
+    ? parsed.tracks
+    : initialTracks;
 
-  title: {
-    pt: "Descobrir seu ponto de partida no inglês",
-    en: "Discover your English starting point"
-  },
+  const savedProjects = Array.isArray(parsed.projects)
+    ? parsed.projects
+    : initialProjects;
 
-  track: {
-    pt: "Inglês profissional",
-    en: "Professional English"
-  },
+  const savedLibrary = Array.isArray(parsed.library)
+    ? parsed.library
+    : [];
 
-  month: {
-    pt: "Janeiro de 2027",
-    en: "January 2027"
-  },
-
-  objective: {
-    pt: "Fazer uma avaliação inicial e registrar os resultados para ajustar a trilha de estudos.",
-    en: "Take an initial assessment and record the results to adjust your study track."
-  },
-
-  relevance: {
-    pt: "Um diagnóstico inicial ajuda a criar metas realistas para leitura, escrita, escuta e fala.",
-    en: "An initial assessment helps create realistic goals for reading, writing, listening and speaking."
-  },
-
-  prerequisites: {
-    pt: [
-      "Separar aproximadamente 50 minutos.",
-      "Escolher uma avaliação disponível e confiável.",
-      "Registrar a data e o resultado."
-    ],
-    en: [
-      "Set aside approximately 50 minutes.",
-      "Choose an available and reliable assessment.",
-      "Record the date and result."
-    ]
-  },
-
-  steps: {
-    pt: [
-      "Fazer a avaliação inicial de inglês.",
-      "Registrar o resultado e a data.",
-      "Anotar quais habilidades pareceram mais difíceis.",
-      "Definir o próximo foco de estudo.",
-      "Guardar a evidência no diário de progresso."
-    ],
-    en: [
-      "Take the initial English assessment.",
-      "Record the result and date.",
-      "Write down which skills felt more difficult.",
-      "Define the next study focus.",
-      "Save the evidence in the progress journal."
-    ]
-  },
-
-  time: "50 min",
-
-  cost: {
-    pt: "Gratuito — confirmar disponibilidade",
-    en: "Free — confirm availability"
-  },
-
-  evidence: {
-    pt: [
-      "Resultado da avaliação.",
-      "Data da realização.",
-      "Observações sobre pontos fortes e dificuldades.",
-      "Próximo objetivo definido."
-    ],
-    en: [
-      "Assessment result.",
-      "Date completed.",
-      "Notes about strengths and difficulties.",
-      "Next objective defined."
-    ]
-  },
-
-  success: {
-    pt: "Conseguir descrever seu ponto de partida sem transformar o resultado em um julgamento pessoal.",
-    en: "Describe your starting point without turning the result into a personal judgment."
-  },
-
-  nextStep: {
-    pt: "Escolher uma rotina inicial de inglês profissional ajustada ao resultado.",
-    en: "Choose an initial professional English routine based on the result."
-  },
-
-  difficultAlternative: {
-    pt: "Criar uma nota chamada “Meu ponto de partida no inglês” e escrever três dificuldades percebidas.",
-    en: "Create a note called “My English starting point” and write down three perceived difficulties."
-  }
-};
-
-function normalizeData(parsed) {
   return {
     ...initialData,
     ...parsed,
-    tracks: Array.isArray(parsed.tracks)
-      ? parsed.tracks
-      : initialTracks,
-    completedMissions: Array.isArray(
-      parsed.completedMissions
-    )
+    library: savedLibrary,
+    tracks: savedTracks,
+    projects: savedProjects.map((project) => ({
+      ...project,
+      completedStages: Array.isArray(project.completedStages)
+        ? project.completedStages
+        : []
+    })),
+    completedMissions: Array.isArray(parsed.completedMissions)
       ? parsed.completedMissions
       : [],
     missionStatuses: parsed.missionStatuses || {},
@@ -298,11 +368,8 @@ function normalizeData(parsed) {
 
 function loadData() {
   const savedData = localStorage.getItem(STORAGE_KEY);
-  const backupData = localStorage.getItem(
-    `${STORAGE_KEY}-backup`
-  );
+  const backupData = localStorage.getItem(`${STORAGE_KEY}-backup`);
 
-  // Tenta carregar os dados principais
   if (savedData) {
     try {
       return normalizeData(JSON.parse(savedData));
@@ -313,7 +380,6 @@ function loadData() {
     }
   }
 
-  // Se os dados principais falharem, tenta o backup automático
   if (backupData) {
     try {
       const recoveredData = normalizeData(
@@ -336,6 +402,44 @@ function loadData() {
   return initialData;
 }
 
+function collectMissions(value, missions = []) {
+  if (!value) {
+    return missions;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => {
+      collectMissions(item, missions);
+    });
+
+    return missions;
+  }
+
+  if (typeof value !== "object") {
+    return missions;
+  }
+
+  const isMission =
+    typeof value.id === "string" &&
+    typeof value.trackId === "string" &&
+    value.title &&
+    typeof value.title === "object";
+
+  if (isMission) {
+    if (!missions.some((mission) => mission.id === value.id)) {
+      missions.push(value);
+    }
+
+    return missions;
+  }
+
+  Object.values(value).forEach((item) => {
+    collectMissions(item, missions);
+  });
+
+  return missions;
+}
+
 function App() {
   const [data, setData] = useState(loadData);
   const [selectedMission, setSelectedMission] = useState(null);
@@ -355,16 +459,11 @@ function App() {
   useEffect(() => {
     const serializedData = JSON.stringify(data);
 
-    // Salva os dados atuais
     localStorage.setItem(STORAGE_KEY, serializedData);
-
-    // Mantém uma cópia automática de segurança
     localStorage.setItem(
       `${STORAGE_KEY}-backup`,
       serializedData
     );
-
-    // Registra a data do último salvamento automático
     localStorage.setItem(
       `${STORAGE_KEY}-backup-date`,
       new Date().toISOString()
@@ -372,6 +471,50 @@ function App() {
 
     document.documentElement.dataset.theme = data.theme;
   }, [data]);
+
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (showBackup) {
+        setShowBackup(false);
+        return;
+      }
+
+      if (showSettings) {
+        setShowSettings(false);
+        return;
+      }
+
+      if (showReview) {
+        setShowReview(false);
+        return;
+      }
+
+      if (evidenceMission) {
+        setEvidenceMission(null);
+        return;
+      }
+
+      if (selectedMission) {
+        setSelectedMission(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [
+    showBackup,
+    showSettings,
+    showReview,
+    evidenceMission,
+    selectedMission
+  ]);
 
   useEffect(() => {
     function handleResize() {
@@ -391,6 +534,29 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const modalIsOpen =
+      Boolean(selectedMission) ||
+      Boolean(evidenceMission) ||
+      showReview ||
+      showSettings ||
+      showBackup;
+
+    document.body.style.overflow = modalIsOpen
+      ? "hidden"
+      : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [
+    selectedMission,
+    evidenceMission,
+    showReview,
+    showSettings,
+    showBackup
+  ]);
+
   function updateData(changes) {
     setData((current) => ({
       ...current,
@@ -400,10 +566,7 @@ function App() {
 
   function navigate(page) {
     updateData({ page });
-
-    if (window.innerWidth <= 680) {
-      setSidebarOpen(false);
-    }
+    setSidebarOpen(false);
   }
 
   function toggleLanguage() {
@@ -434,6 +597,10 @@ function App() {
   }
 
   function toggleMissionComplete(mission) {
+    if (!mission || !mission.id) {
+      return;
+    }
+
     const isCompleted = data.completedMissions.includes(
       mission.id
     );
@@ -444,22 +611,8 @@ function App() {
         )
       : [...data.completedMissions, mission.id];
 
-    const tracks = data.tracks.map((track) => {
-      if (track.id !== mission.trackId) {
-        return track;
-      }
-
-      return {
-        ...track,
-        progress: isCompleted
-          ? Math.max(0, track.progress - 8)
-          : Math.min(100, track.progress + 8)
-      };
-    });
-
     updateData({
       completedMissions,
-      tracks,
       missionStatuses: {
         ...data.missionStatuses,
         [mission.id]: isCompleted
@@ -498,27 +651,52 @@ function App() {
     setEvidenceMission(null);
   }
 
-  function importBackup(backupData) {
-    setData({
-      ...initialData,
-      ...backupData,
-      user: data.user,
-      tracks: Array.isArray(backupData.tracks)
-        ? backupData.tracks
-        : initialTracks,
-      completedMissions: Array.isArray(
-        backupData.completedMissions
+  function toggleProjectStage(projectId, stageId) {
+    const projects = data.projects.map((project) => {
+      if (project.id !== projectId) {
+        return project;
+      }
+
+      const completedStages = Array.isArray(
+        project.completedStages
       )
-        ? backupData.completedMissions
-        : [],
-      missionStatuses: backupData.missionStatuses || {},
-      evidences: backupData.evidences || {}
+        ? project.completedStages
+        : [];
+
+      const isCompleted =
+        completedStages.includes(stageId);
+
+      return {
+        ...project,
+        completedStages: isCompleted
+          ? completedStages.filter(
+              (id) => id !== stageId
+            )
+          : [...completedStages, stageId]
+      };
     });
 
+    updateData({ projects });
+  }
+
+  function importBackup(backupData) {
+    const normalized = normalizeData({
+      ...backupData,
+      user: data.user,
+      page: "dashboard"
+    });
+
+    setData(normalized);
     setShowBackup(false);
   }
 
   function handleLogout() {
+    const confirmed = window.confirm(t.logoutConfirm);
+
+    if (!confirmed) {
+      return;
+    }
+
     updateData({
       user: null,
       page: "dashboard"
@@ -542,9 +720,6 @@ function App() {
       />
     );
   }
-
-  const isMainMissionCompleted =
-    data.completedMissions.includes(mainMission.id);
 
   return (
     <div
@@ -579,10 +754,15 @@ function App() {
         onToggleTheme={toggleTheme}
         onReview={() => {
           setShowReview(true);
-
-          if (isMobile) {
-            setSidebarOpen(false);
-          }
+          setSidebarOpen(false);
+        }}
+        onOpenSettings={() => {
+          setShowSettings(true);
+          setSidebarOpen(false);
+        }}
+        onOpenBackup={() => {
+          setShowBackup(true);
+          setSidebarOpen(false);
         }}
       />
 
@@ -601,20 +781,24 @@ function App() {
           <DashboardContent
             data={data}
             t={t}
-            mission={mainMission}
-            completed={isMainMissionCompleted}
-            onComplete={() =>
-              toggleMissionComplete(mainMission)
-            }
-            onOpenMission={() =>
-              setSelectedMission(mainMission)
-            }
+            onComplete={toggleMissionComplete}
+            onOpenMission={(mission) => {
+              setSelectedMission(mission);
+              setSidebarOpen(false);
+            }}
             onToggleWeekMode={toggleWeekMode}
-            onReview={() => setShowReview(true)}
-            onOpenSettings={() =>
-              setShowSettings(true)
-            }
-            onOpenBackup={() => setShowBackup(true)}
+            onReview={() => {
+              setShowReview(true);
+              setSidebarOpen(false);
+            }}
+            onOpenSettings={() => {
+              setShowSettings(true);
+              setSidebarOpen(false);
+            }}
+            onOpenBackup={() => {
+              setShowBackup(true);
+              setSidebarOpen(false);
+            }}
           />
         )}
 
@@ -622,20 +806,28 @@ function App() {
           <Campaign
             data={data}
             t={t}
-            onOpenMission={(mission) =>
-              setSelectedMission(mission)
-            }
+            onOpenMission={(mission) => {
+              setSelectedMission(mission);
+              setSidebarOpen(false);
+            }}
           />
         )}
 
         {data.page === "tracks" && (
-          <TracksPage data={data} t={t} />
+          <TracksPage
+            data={data}
+            t={t}
+            campaignPhases={campaignPhases}
+          />
         )}
 
-        {data.page === "projects" && (
-          <ProjectsPage data={data} t={t} />
+        {data.page === "library-projects" && (
+          <LibraryProjects
+            data={data}
+            t={t}
+            onChange={updateData}
+          />
         )}
-
         {data.page === "library" && (
           <LibraryPage data={data} t={t} />
         )}
@@ -756,6 +948,10 @@ function LoginScreen({
 
         <p>{t.loginDescription}</p>
 
+        <p className="local-storage-notice">
+          🔒 {t.localStorageNotice}
+        </p>
+
         <form onSubmit={handleSubmit}>
           <label htmlFor="login-email">
             {t.email}
@@ -802,18 +998,25 @@ function Sidebar({
   onNavigate,
   onToggleLanguage,
   onToggleTheme,
-  onReview
+  onReview,
+  onOpenSettings,
+  onOpenBackup
 }) {
   const items = [
     ["dashboard", "⌂", t.dashboard],
     ["campaign", "◈", t.campaign],
     ["tracks", "◎", t.tracks],
-    ["projects", "▣", t.projects],
-    ["library", "▤", t.library]
+    [
+      "library-projects",
+      "▣",
+      data.language === "pt"
+        ? "Biblioteca e projetos"
+        : "Library and projects"
+    ]
   ];
-
   return (
     <aside
+      id="main-sidebar"
       className={`sidebar ${
         isOpen ? "is-open" : "is-closed"
       }`}
@@ -823,8 +1026,16 @@ function Sidebar({
         onClick={onToggle}
         type="button"
         aria-label={
-          isOpen ? "Fechar menu" : "Abrir menu"
+          data.language === "pt"
+            ? isOpen
+              ? "Fechar menu"
+              : "Abrir menu"
+            : isOpen
+              ? "Close menu"
+              : "Open menu"
         }
+        aria-expanded={isOpen}
+        aria-controls="main-sidebar"
       >
         {isOpen ? "‹" : "›"}
       </button>
@@ -840,29 +1051,62 @@ function Sidebar({
 
       <nav
         className="main-nav"
-        aria-label="Navegação principal"
+        aria-label={
+          data.language === "pt"
+            ? "Navegação principal"
+            : "Main navigation"
+        }
       >
-        {items.map(([id, icon, label]) => (
-          <button
-            key={id}
-            className={`nav-item ${
-              data.page === id ? "active" : ""
-            }`}
-            onClick={() => onNavigate(id)}
-            type="button"
-          >
-            {icon}
-            <span>{label}</span>
-          </button>
-        ))}
+        {items.map(([id, icon, label]) => {
+          const isActive = data.page === id;
+
+          return (
+            <button
+              key={id}
+              className={`nav-item ${
+                isActive ? "active" : ""
+              }`}
+              onClick={() => onNavigate(id)}
+              type="button"
+              aria-current={
+                isActive ? "page" : undefined
+              }
+              aria-label={label}
+            >
+              <span aria-hidden="true">{icon}</span>
+              <span>{label}</span>
+            </button>
+          );
+        })}
+
+        <button
+          className="nav-item"
+          onClick={onOpenSettings}
+          type="button"
+          aria-label={t.settings}
+        >
+          <span aria-hidden="true">⚙</span>
+          <span>{t.settings}</span>
+        </button>
 
         <button
           className="nav-item"
           onClick={onReview}
           type="button"
+          aria-label={t.review}
         >
-          ◌
+          <span aria-hidden="true">✎</span>
           <span>{t.review}</span>
+        </button>
+
+        <button
+          className="nav-item"
+          onClick={onOpenBackup}
+          type="button"
+          aria-label={t.backup}
+        >
+          <span aria-hidden="true">↥</span>
+          <span>{t.backup}</span>
         </button>
       </nav>
 
@@ -905,7 +1149,11 @@ function Header({
     campaign: t.campaign,
     tracks: t.tracks,
     projects: t.projects,
-    library: t.library
+    library: t.library,
+    "library-projects":
+      data.language === "pt"
+        ? "Biblioteca e projetos"
+        : "Library and projects"
   };
 
   return (
@@ -915,10 +1163,18 @@ function Header({
         onClick={onToggleSidebar}
         type="button"
         aria-label={
-          sidebarOpen ? "Fechar menu" : "Abrir menu"
+          data.language === "pt"
+            ? sidebarOpen
+              ? "Fechar menu"
+              : "Abrir menu"
+            : sidebarOpen
+              ? "Close menu"
+              : "Open menu"
         }
+        aria-expanded={sidebarOpen}
+        aria-controls="main-sidebar"
       >
-        ☰
+        <span aria-hidden="true">☰</span>
       </button>
 
       <div>
@@ -941,6 +1197,7 @@ function Header({
           onClick={onLogout}
           type="button"
           title={t.logout}
+          aria-label={`${t.logout}: ${data.user.email}`}
         >
           {data.user.email
             .charAt(0)
@@ -970,6 +1227,27 @@ function MissionModal({
     data.missionStatuses[mission.id] ||
     "not_started";
 
+  const read = (field, fallback = "") => {
+    if (!field) {
+      return fallback;
+    }
+
+    if (
+      typeof field === "object" &&
+      !Array.isArray(field)
+    ) {
+      return field[language] || field.pt || field.en || fallback;
+    }
+
+    return field;
+  };
+
+  const readList = (field) => {
+    const value = read(field, []);
+
+    return Array.isArray(value) ? value : [];
+  };
+
   return (
     <div className="modal-backdrop">
       <section
@@ -989,70 +1267,68 @@ function MissionModal({
 
         <div className="modal-header">
           <span className="tag">
-            {mission.track[language]}
+            {read(mission.track)}
           </span>
 
           <span className="mission-modal-month">
-            {mission.month[language]}
+            {read(mission.month)}
           </span>
         </div>
 
         <h2 id="mission-modal-title">
-          {mission.title[language]}
+          {read(mission.title)}
         </h2>
 
         <MissionSection
           title={t.objective}
-          content={mission.objective[language]}
+          content={read(mission.objective)}
         />
 
         <MissionSection
           title={t.relevance}
-          content={mission.relevance[language]}
+          content={read(mission.relevance)}
         />
 
         <MissionList
           title={t.prerequisites}
-          items={mission.prerequisites[language]}
+          items={readList(mission.prerequisites)}
         />
 
         <MissionList
           title={t.steps}
-          items={mission.steps[language]}
+          items={readList(mission.steps)}
         />
 
         <div className="mission-detail-grid">
           <div>
             <small>{t.time}</small>
-            <strong>{mission.time}</strong>
+            <strong>{read(mission.time)}</strong>
           </div>
 
           <div>
             <small>{t.cost}</small>
-            <strong>{mission.cost[language]}</strong>
+            <strong>{read(mission.cost)}</strong>
           </div>
         </div>
 
         <MissionList
           title={t.evidence}
-          items={mission.evidence[language]}
+          items={readList(mission.evidence)}
         />
 
         <MissionSection
           title={t.success}
-          content={mission.success[language]}
+          content={read(mission.success)}
         />
 
         <MissionSection
           title={t.nextStep}
-          content={mission.nextStep[language]}
+          content={read(mission.nextStep)}
         />
 
         <MissionSection
           title={t.difficultAlternative}
-          content={
-            mission.difficultAlternative[language]
-          }
+          content={read(mission.difficultAlternative)}
         />
 
         <div className="mission-status-selector">
@@ -1149,6 +1425,10 @@ function MissionModal({
 }
 
 function MissionSection({ title, content }) {
+  if (!content) {
+    return null;
+  }
+
   return (
     <div className="mission-section">
       <h3>{title}</h3>
@@ -1158,6 +1438,10 @@ function MissionSection({ title, content }) {
 }
 
 function MissionList({ title, items }) {
+  if (!items || items.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mission-section">
       <h3>{title}</h3>
@@ -1211,6 +1495,7 @@ function ReviewModal({
         <p>{t.reviewDescription}</p>
 
         <textarea
+          autoFocus
           value={text}
           onChange={(event) =>
             setText(event.target.value)
@@ -1241,7 +1526,42 @@ function ReviewModal({
   );
 }
 
-function TracksPage({ data, t }) {
+function TracksPage({
+  data,
+  t,
+  campaignPhases: phases
+}) {
+  const missions = useMemo(
+    () => collectMissions(phases),
+    [phases]
+  );
+
+  const statsByTrack = data.tracks.reduce(
+    (result, track) => {
+      const trackMissions = missions.filter(
+        (mission) => mission.trackId === track.id
+      );
+
+      const completed = trackMissions.filter((mission) =>
+        data.completedMissions.includes(mission.id)
+      ).length;
+
+      const total = trackMissions.length;
+
+      result[track.id] = {
+        total,
+        completed,
+        progress:
+          total > 0
+            ? Math.round((completed / total) * 100)
+            : 0
+      };
+
+      return result;
+    },
+    {}
+  );
+
   return (
     <section className="simple-page">
       <div className="page-heading">
@@ -1257,167 +1577,399 @@ function TracksPage({ data, t }) {
 
         <p>
           {data.language === "pt"
-            ? "Cada trilha evolui por meio de evidências demonstráveis."
-            : "Each track evolves through demonstrable evidence."}
+            ? "O progresso é calculado pelas missões concluídas em cada trilha."
+            : "Progress is calculated from completed missions in each track."}
         </p>
       </div>
 
       <div className="large-track-grid">
-        {data.tracks.map((track) => (
-          <article
-            className="large-track-card"
-            key={track.id}
-          >
-            <div className="large-track-header">
-              <span
-                className="track-dot"
-                style={{
-                  background: track.color
-                }}
-              />
+        {data.tracks.map((track) => {
+          const stats = statsByTrack[track.id] || {
+            total: 0,
+            completed: 0,
+            progress: 0
+          };
 
-              <h3>{track.name[data.language]}</h3>
+          return (
+            <article
+              className="large-track-card"
+              key={track.id}
+            >
+              <div className="large-track-header">
+                <span
+                  className="track-dot"
+                  style={{
+                    background: track.color
+                  }}
+                />
 
-              <strong>{track.progress}%</strong>
-            </div>
+                <h3>{track.name[data.language]}</h3>
 
-            <div className="progress-bar">
-              <span
-                style={{
-                  width: `${track.progress}%`,
-                  background: track.color
-                }}
-              />
-            </div>
-          </article>
-        ))}
+                <strong>{stats.progress}%</strong>
+              </div>
+
+              <div className="progress-bar">
+                <span
+                  style={{
+                    width: `${stats.progress}%`,
+                    background: track.color
+                  }}
+                />
+              </div>
+
+              <p className="track-mission-count">
+                {data.language === "pt"
+                  ? `${stats.completed} de ${stats.total} missões concluídas`
+                  : `${stats.completed} of ${stats.total} missions completed`}
+              </p>
+
+              {stats.total === 0 && (
+                <p className="track-mission-count">
+                  {data.language === "pt"
+                    ? "Missões ainda não cadastradas nesta trilha."
+                    : "No missions registered for this track yet."}
+                </p>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-function ProjectsPage({ data }) {
-  const projects = [
-    {
-      pt: "Aplicação web pequena",
-      en: "Small web application",
-      descriptionPt:
-        "Interface, API, banco de dados, testes e README.",
-      descriptionEn:
-        "Interface, API, database, tests and README."
-    },
-    {
-      pt: "Integração entre serviços",
-      en: "Service integration",
-      descriptionPt:
-        "API, webhook, autenticação, logs e tratamento de falhas.",
-      descriptionEn:
-        "API, webhook, authentication, logs and failure handling."
-    },
-    {
-      pt: "Deploy em cloud",
-      en: "Cloud deployment",
-      descriptionPt:
-        "Diagrama, IAM, monitoramento, custos e desligamento.",
-      descriptionEn:
-        "Diagram, IAM, monitoring, costs and shutdown checklist."
-    }
-  ];
+function ProjectsPage({
+  data,
+  onToggleStage
+}) {
+  const language = data.language;
 
   return (
     <section className="simple-page">
       <div className="page-heading">
-        <span className="eyebrow">PORTFÓLIO</span>
+        <span className="eyebrow">
+          {language === "pt"
+            ? "PORTFÓLIO"
+            : "PORTFOLIO"}
+        </span>
 
         <h2>
-          {data.language === "pt"
+          {language === "pt"
             ? "Projetos progressivos"
             : "Progressive projects"}
         </h2>
 
         <p>
-          {data.language === "pt"
-            ? "Projetos divididos em etapas pequenas para construir evidências."
-            : "Projects divided into small stages to build evidence."}
+          {language === "pt"
+            ? "Construa evidências práticas em etapas pequenas e verificáveis."
+            : "Build practical evidence through small and verifiable stages."}
         </p>
       </div>
 
       <div className="project-grid">
-        {projects.map((project, index) => (
-          <article
-            className="project-card"
-            key={project.pt}
-          >
-            <span className="project-number">
-              {String(index + 1).padStart(2, "0")}
-            </span>
+        {data.projects.map((project, index) => {
+          const completedStages = Array.isArray(
+            project.completedStages
+          )
+            ? project.completedStages
+            : [];
 
-            <h3>
-              {data.language === "pt"
-                ? project.pt
-                : project.en}
-            </h3>
+          const totalStages = project.stages.length;
 
-            <p>
-              {data.language === "pt"
-                ? project.descriptionPt
-                : project.descriptionEn}
-            </p>
-          </article>
-        ))}
+          const completedCount =
+            project.stages.filter((stage) =>
+              completedStages.includes(stage.id)
+            ).length;
+
+          const progress =
+            totalStages > 0
+              ? Math.round(
+                  (completedCount / totalStages) * 100
+                )
+              : 0;
+
+          return (
+            <article
+              className="project-card"
+              key={project.id}
+            >
+              <div className="project-card-header">
+                <span className="project-number">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+
+                <span className="project-progress">
+                  {progress}%
+                </span>
+              </div>
+
+              <h3>{project.title[language]}</h3>
+
+              <p>{project.description[language]}</p>
+
+              <div className="progress-bar">
+                <span
+                  style={{
+                    width: `${progress}%`
+                  }}
+                />
+              </div>
+
+              <p className="project-stage-count">
+                {language === "pt"
+                  ? `${completedCount} de ${totalStages} etapas concluídas`
+                  : `${completedCount} of ${totalStages} stages completed`}
+              </p>
+
+              <div className="project-stages">
+                {project.stages.map((stage) => {
+                  const isCompleted =
+                    completedStages.includes(stage.id);
+
+                  return (
+                    <label
+                      className={`project-stage ${
+                        isCompleted
+                          ? "is-completed"
+                          : ""
+                      }`}
+                      key={stage.id}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isCompleted}
+                        onChange={() =>
+                          onToggleStage(
+                            project.id,
+                            stage.id
+                          )
+                        }
+                      />
+
+                      <span>{stage[language]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
 }
 
 function LibraryPage({ data }) {
+  const language = data.language;
+
   const resources = [
-    ["Inglês", "English", "BBC Learning English"],
-    ["Cloud", "Cloud", "AWS Skill Builder"],
-    ["Programação", "Programming", "Python.org"],
-    ["GitHub", "GitHub", "GitHub Docs"],
-    ["Segurança", "Security", "OWASP"],
-    ["Francês", "French", "TV5MONDE"]
+    {
+      id: "bbc-english",
+      category: {
+        pt: "Inglês profissional",
+        en: "Professional English"
+      },
+      priority: {
+        pt: "Prioridade alta",
+        en: "High priority"
+      },
+      type: {
+        pt: "Curso gratuito",
+        en: "Free course"
+      },
+      name: "BBC Learning English",
+      description: {
+        pt: "Prática de vocabulário, gramática, escuta e pronúncia em inglês.",
+        en: "Practice vocabulary, grammar, listening and pronunciation in English."
+      },
+      url: "https://www.bbc.co.uk/learningenglish/"
+    },
+    {
+      id: "aws-skill-builder",
+      category: {
+        pt: "Cloud / AWS",
+        en: "Cloud / AWS"
+      },
+      priority: {
+        pt: "Prioridade alta",
+        en: "High priority"
+      },
+      type: {
+        pt: "Treinamento oficial",
+        en: "Official training"
+      },
+      name: "AWS Skill Builder",
+      description: {
+        pt: "Cursos e materiais oficiais para fundamentos de cloud e AWS.",
+        en: "Official courses and materials for cloud and AWS fundamentals."
+      },
+      url: "https://skillbuilder.aws/"
+    },
+    {
+      id: "python",
+      category: {
+        pt: "Programação",
+        en: "Programming"
+      },
+      priority: {
+        pt: "Prioridade média",
+        en: "Medium priority"
+      },
+      type: {
+        pt: "Documentação oficial",
+        en: "Official documentation"
+      },
+      name: "Python.org",
+      description: {
+        pt: "Documentação e tutorial oficial para desenvolver fundamentos de programação.",
+        en: "Official documentation and tutorial for building programming fundamentals."
+      },
+      url: "https://docs.python.org/3/tutorial/"
+    },
+    {
+      id: "github-docs",
+      category: {
+        pt: "Ferramentas de desenvolvimento",
+        en: "Development tools"
+      },
+      priority: {
+        pt: "Prioridade média",
+        en: "Medium priority"
+      },
+      type: {
+        pt: "Documentação oficial",
+        en: "Official documentation"
+      },
+      name: "GitHub Docs",
+      description: {
+        pt: "Repositórios, branches, commits, pull requests e colaboração.",
+        en: "Repositories, branches, commits, pull requests and collaboration."
+      },
+      url: "https://docs.github.com/en"
+    },
+    {
+      id: "owasp",
+      category: {
+        pt: "Cibersegurança",
+        en: "Cybersecurity"
+      },
+      priority: {
+        pt: "Prioridade alta",
+        en: "High priority"
+      },
+      type: {
+        pt: "Referência técnica",
+        en: "Technical reference"
+      },
+      name: "OWASP",
+      description: {
+        pt: "Boas práticas para segurança de aplicações e identificação de riscos.",
+        en: "Best practices for application security and risk identification."
+      },
+      url: "https://owasp.org/"
+    },
+    {
+      id: "tv5monde",
+      category: {
+        pt: "Francês",
+        en: "French"
+      },
+      priority: {
+        pt: "Prioridade de manutenção",
+        en: "Maintenance priority"
+      },
+      type: {
+        pt: "Curso gratuito",
+        en: "Free course"
+      },
+      name: "TV5MONDE - Apprendre le français",
+      description: {
+        pt: "Exercícios e materiais para manter o contato gradual com o francês.",
+        en: "Exercises and materials for maintaining gradual contact with French."
+      },
+      url: "https://apprendre.tv5monde.com/"
+    },
+    {
+      id: "dev-community",
+      category: {
+        pt: "Carreira e comunidade",
+        en: "Career and community"
+      },
+      priority: {
+        pt: "Prioridade média",
+        en: "Medium priority"
+      },
+      type: {
+        pt: "Comunidade técnica",
+        en: "Technical community"
+      },
+      name: "DEV Community",
+      description: {
+        pt: "Artigos, experiências e discussões sobre desenvolvimento e tecnologia.",
+        en: "Articles, experiences and discussions about development and technology."
+      },
+      url: "https://dev.to/"
+    }
   ];
 
   return (
     <section className="simple-page">
       <div className="page-heading">
-        <span className="eyebrow">RECURSOS</span>
+        <span className="eyebrow">
+          {language === "pt"
+            ? "RECURSOS"
+            : "RESOURCES"}
+        </span>
 
         <h2>
-          {data.language === "pt"
-            ? "Biblioteca de recursos"
-            : "Resource library"}
+          {language === "pt"
+            ? "Biblioteca de aprendizagem"
+            : "Learning library"}
         </h2>
 
         <p>
-          {data.language === "pt"
-            ? "Priorize documentação oficial e materiais gratuitos."
-            : "Prioritize official documentation and free materials."}
+          {language === "pt"
+            ? "Materiais organizados para apoiar as trilhas da sua rota."
+            : "Organized materials to support the tracks in your route."}
         </p>
       </div>
 
       <div className="resource-list">
-        {resources.map(([pt, en, name]) => (
+        {resources.map((resource) => (
           <article
             className="resource-card"
-            key={name}
+            key={resource.id}
           >
-            <div>
-              <span className="eyebrow">
-                {data.language === "pt"
-                  ? pt
-                  : en}
-              </span>
+            <div className="resource-card-content">
+              <div className="resource-card-top">
+                <span className="eyebrow">
+                  {resource.category[language]}
+                </span>
 
-              <h3>{name}</h3>
+                <span className="resource-priority">
+                  {resource.priority[language]}
+                </span>
+              </div>
 
-              <p>
-                {data.language === "pt"
-                  ? "Custo e disponibilidade: verificar."
-                  : "Cost and availability: verify."}
-              </p>
+              <h3>{resource.name}</h3>
+
+              <p>{resource.description[language]}</p>
+
+              <div className="resource-meta">
+                <span>{resource.type[language]}</span>
+              </div>
+
+              <a
+                className="secondary-button resource-link"
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {language === "pt"
+                  ? "Abrir recurso"
+                  : "Open resource"}
+                <span aria-hidden="true"> ↗</span>
+              </a>
             </div>
           </article>
         ))}
