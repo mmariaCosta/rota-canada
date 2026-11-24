@@ -278,32 +278,62 @@ const mainMission = {
   }
 };
 
+function normalizeData(parsed) {
+  return {
+    ...initialData,
+    ...parsed,
+    tracks: Array.isArray(parsed.tracks)
+      ? parsed.tracks
+      : initialTracks,
+    completedMissions: Array.isArray(
+      parsed.completedMissions
+    )
+      ? parsed.completedMissions
+      : [],
+    missionStatuses: parsed.missionStatuses || {},
+    evidences: parsed.evidences || {},
+    reviewNote: parsed.reviewNote || ""
+  };
+}
+
 function loadData() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+  const savedData = localStorage.getItem(STORAGE_KEY);
+  const backupData = localStorage.getItem(
+    `${STORAGE_KEY}-backup`
+  );
 
-    if (!saved) {
-      return initialData;
+  // Tenta carregar os dados principais
+  if (savedData) {
+    try {
+      return normalizeData(JSON.parse(savedData));
+    } catch {
+      console.warn(
+        "Dados principais inválidos. Tentando recuperar o backup."
+      );
     }
-
-    const parsed = JSON.parse(saved);
-
-    return {
-      ...initialData,
-      ...parsed,
-      tracks: Array.isArray(parsed.tracks)
-        ? parsed.tracks
-        : initialTracks,
-      completedMissions: Array.isArray(parsed.completedMissions)
-        ? parsed.completedMissions
-        : [],
-      missionStatuses: parsed.missionStatuses || {},
-      evidences: parsed.evidences || {},
-      reviewNote: parsed.reviewNote || ""
-    };
-  } catch {
-    return initialData;
   }
+
+  // Se os dados principais falharem, tenta o backup automático
+  if (backupData) {
+    try {
+      const recoveredData = normalizeData(
+        JSON.parse(backupData)
+      );
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(recoveredData)
+      );
+
+      return recoveredData;
+    } catch {
+      console.warn(
+        "Não foi possível recuperar o backup automático."
+      );
+    }
+  }
+
+  return initialData;
 }
 
 function App() {
