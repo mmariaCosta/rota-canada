@@ -323,7 +323,23 @@ function App() {
   const t = translations[data.language];
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const serializedData = JSON.stringify(data);
+
+    // Salva os dados atuais
+    localStorage.setItem(STORAGE_KEY, serializedData);
+
+    // Mantém uma cópia automática de segurança
+    localStorage.setItem(
+      `${STORAGE_KEY}-backup`,
+      serializedData
+    );
+
+    // Registra a data do último salvamento automático
+    localStorage.setItem(
+      `${STORAGE_KEY}-backup-date`,
+      new Date().toISOString()
+    );
+
     document.documentElement.dataset.theme = data.theme;
   }, [data]);
 
